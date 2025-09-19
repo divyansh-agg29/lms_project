@@ -10,6 +10,7 @@ engine = create_engine(
 # Session factory - each request gets its own database session
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# Base Class for ORM models
 class Base(DeclarativeBase):
     pass
 
