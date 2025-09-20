@@ -35,7 +35,7 @@ def list_employees(db:Session, skip:int =0, limit:int = 100):
     return db.execute(stmt).scalars().all()
 
 
-# ---------- EMPLOYEE ----------
+# ---------- LEAVES ----------
 def has_overlapping_leave(db:Session, employee_id:int, start_date, end_date):
     stmt = select(models.LeaveRequest).where(
         models.LeaveRequest.employee_id == employee_id,
