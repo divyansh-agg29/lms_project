@@ -46,7 +46,18 @@ def has_overlapping_leave(db:Session, employee_id:int, start_date, end_date):
     return db.execute(stmt).first() is not None
 
 def apply_leave(db:Session, employee:models.Employee, start_date, end_date):
+
+    if start_date < employee.joining_date:
+        raise ValueError("Cannot apply for leave before joining date")
+    if has_overlapping_leave(db, employee.id, start_date, end_date):
+        raise ValueError("Overlapping leave request exists")
+
     num_days = daterange_inclusive_days(start_date, end_date)
+    if num_days <= 0:
+        raise ValueError("Invalid date range")
+    if employee.leave_balance < num_days:
+        raise ValueError("Requested days exceed leave balance")
+
     leave = models.LeaveRequest(
         employee_id = employee.id,
         start_date = start_date,
