@@ -80,8 +80,6 @@ def list_leaves_for_employee(db: Session, employee_id: int, skip: int = 0, limit
 def approve_leave(db:Session, leave:models.LeaveRequest, employee:models.Employee):
     if leave.status != models.LeaveStatus.applied:
         raise ValueError("Only 'applied' leaves can be approved")
-    if employee.leave_balance < leave.num_days:
-        raise ValueError("Insufficient leave balance for approval")
     
     employee.leave_balance -= leave.num_days
     leave.status = models.LeaveStatus.approved
