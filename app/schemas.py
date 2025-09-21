@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, ConfigDict
 from datetime import date
 from enum import Enum
 
@@ -26,8 +26,7 @@ class EmployeeOut(BaseModel):
     joining_date: date
     leave_balance: int
 
-    class Config:
-        from_attributes = True   # allows conversion from SQLAlchemy model
+    model_config = ConfigDict(from_attributes=True)   # allows conversion from SQLAlchemy model
 
 # ---------- LEAVE ----------
 
@@ -36,15 +35,6 @@ class LeaveApply(BaseModel):
     employee_id: int
     start_date: date
     end_date: date
-
-    # Validation → end_date should not be before start_date
-    @field_validator("end_date")
-    @classmethod
-    def end_not_before_start(cls, v, info):
-        values = info.data
-        if "start_date" in values and v < values["start_date"]:
-            raise ValueError("end_date cannot be before start_date")
-        return v
 
 # Response: when returning leave request info
 class LeaveOut(BaseModel):
@@ -55,8 +45,7 @@ class LeaveOut(BaseModel):
     num_days: int
     status: LeaveStatus
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # Response: only leave balance
 class BalanceOut(BaseModel):
