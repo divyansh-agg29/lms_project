@@ -65,6 +65,15 @@ def test_reject_leave(client):
     data = response.json()
     assert data["status"] == "rejected"
 
+def test_leave_nonexistent_employee(client):
+    response = client.post("/leave/apply", json={
+        "employee_id": 1,
+        "start_date": "2025-02-25",
+        "end_date": "2025-02-28"
+    })
+    assert response.status_code == 404
+    assert "Employee not found" in response.json()["detail"]
+
 
 def test_leave_before_joining_date(client):
     emp = client.post("/employees", json={
@@ -173,3 +182,10 @@ def test_reject_approved_leave(client):
     response = client.put(f"/leave/{leave['id']}/reject")
     assert response.status_code == 400
     assert "already approved" in response.json()["detail"]
+
+
+def test_list_leaves_for_nonexistent_employee(client):
+    response = client.get(f"/leave/employee/1")
+    assert response.status_code == 404
+    data = response.json()
+    assert "Employee not found" in response.json()["detail"]
