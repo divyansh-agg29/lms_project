@@ -6,8 +6,6 @@ from .database import Base, engine, get_db
 
 app = FastAPI(title="Leave Management System")
 
-Base.metadata.create_all(bind=engine)
-
 @app.post("/employees",response_model=schemas.EmployeeOut, status_code=status.HTTP_201_CREATED)
 def add_employee(payload: schemas.EmployeeCreate, db: Session = Depends(get_db)):
     if crud.get_employee_by_email(db, payload.email):
