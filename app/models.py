@@ -1,4 +1,4 @@
-from sqlalchemy import Integer, String, Date, ForeignKey, CheckConstraint, Enum as SAEnum
+from sqlalchemy import Integer, String, Date, ForeignKey, CheckConstraint, Enum as SAEnum, Boolean
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from .database import Base
 import enum
@@ -8,6 +8,10 @@ class LeaveStatus(str, enum.Enum):
     applied = "applied"
     approved = "approved"
     rejected = "rejected"
+
+class Role(str, enum.Enum):
+    employee = "employee"
+    manager = "manager"
 
 
 class Employee(Base):
@@ -19,6 +23,10 @@ class Employee(Base):
     department: Mapped[str] = mapped_column(String(100), nullable=False)
     joining_date: Mapped[date] = mapped_column(Date, nullable=False)
     leave_balance: Mapped[int] = mapped_column(Integer, nullable=False, default=20)
+
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[Role] = mapped_column(SAEnum(Role), nullable=False, default=Role.employee)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     # Relationship: One employee can have many leave requests
     leaves: Mapped[list["LeaveRequest"]] = relationship("LeaveRequest", back_populates="employee", cascade="all, delete-orphan")

@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, and_
 from . import models
 from .config import settings
+from . import auth
 
 # ---------- Helper ----------
 
@@ -10,13 +11,15 @@ def daterange_inclusive_days(start_date,end_date):
 
 
 # ---------- EMPLOYEE ----------
-def create_employee(db:Session, *, name:str, email:str, department:str, joining_date):
+def create_employee(db:Session, *, name:str, email:str, department:str, joining_date, password:str, role: models.Role = models.Role.employee):
     employee = models.Employee(
         name = name,
         email = email, 
         department = department,
         joining_date = joining_date,
-        leave_balance = settings.DEFAULT_LEAVE_BALANCE
+        leave_balance = settings.DEFAULT_LEAVE_BALANCE,
+        password_hash = auth.hash_password(password),
+        role=role
     )
     db.add(employee)
     db.commit()

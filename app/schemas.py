@@ -1,21 +1,36 @@
 from pydantic import BaseModel, EmailStr, field_validator, ConfigDict
 from datetime import date
 from enum import Enum
-
-class LeaveStatus(str, Enum):
-    applied = "applied"
-    approved = "approved"
-    rejected = "rejected"
+from app.models import Role, LeaveStatus
 
 
-# ---------- EMPLOYEE ----------
-
-# Request: when creating an employee
-class EmployeeCreate(BaseModel):
+# ------------ AUTH ------------
+class EmployeeSelfRegister(BaseModel):
     name: str
     email: EmailStr
     department: str
     joining_date: date
+    password: str
+
+
+# Request: when creating an employee
+class EmployeeRegister(BaseModel):
+    name: str
+    email: EmailStr
+    department: str
+    joining_date: date
+    password: str
+    role: Role = Role.employee
+
+class EmployeeLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+
+# ---------- EMPLOYEE ----------
 
 # Response: when sending employee data back
 class EmployeeOut(BaseModel):
@@ -25,6 +40,8 @@ class EmployeeOut(BaseModel):
     department: str
     joining_date: date
     leave_balance: int
+    role: Role
+    is_active: bool
 
     model_config = ConfigDict(from_attributes=True)   # allows conversion from SQLAlchemy model
 
