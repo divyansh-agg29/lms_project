@@ -81,8 +81,10 @@ def list_leaves_for_employee(db: Session, employee_id: int, skip: int = 0, limit
     return db.execute(stmt).scalars().all()
 
 def approve_leave(db:Session, leave:models.LeaveRequest, employee:models.Employee):
-    if leave.status != models.LeaveStatus.applied:
-        raise ValueError("Only 'applied' leaves can be approved")
+    if leave.status == models.LeaveStatus.rejected:
+        raise ValueError("Cannot approve an already rejected leave")
+    if leave.status == models.LeaveStatus.approved:
+        raise ValueError("Cannot approve an already approved leave")
     
     employee.leave_balance -= leave.num_days
     leave.status = models.LeaveStatus.approved
@@ -94,7 +96,7 @@ def approve_leave(db:Session, leave:models.LeaveRequest, employee:models.Employe
 
 def reject_leave(db:Session, leave:models.LeaveRequest):
     if leave.status == models.LeaveStatus.rejected:
-        raise ValueError("Leave is already rejected")
+        raise ValueError("Cannot reject an already rejected leave")
     if leave.status == models.LeaveStatus.approved:
         raise ValueError("Cannot reject an already approved leave")
     

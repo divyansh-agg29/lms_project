@@ -90,8 +90,6 @@ def apply_leave(payload: schemas.LeaveApply, db:Session = Depends(get_db), curre
         raise HTTPException(status_code=403, detail="You can only apply leave for yourself")
     
     emp = crud.get_employee(db, payload.employee_id)
-    if not emp:
-        raise HTTPException(status_code=404, detail="Employee not found")
     
     try:
         leave = crud.apply_leave(db, employee=emp, start_date=payload.start_date, end_date=payload.end_date,)
