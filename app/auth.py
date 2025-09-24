@@ -42,7 +42,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     
     email: str = payload.get('sub')
     if email is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Token")
     
     user = crud.get_employee_by_email(db, email)
     if not user or not user.is_active:
