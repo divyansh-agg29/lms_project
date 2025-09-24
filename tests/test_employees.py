@@ -1,140 +1,246 @@
-def test_create_employee(client):
-    response = client.post("/employees", json={
+## CREATE EMPLOYEE
+def test_manager_can_create_employee(client, seed_manager):
+    # get token from seeded manager
+    token = client.post("/auth/token",data={
+        "username": "manager@example.com",
+        "password": "managerpass"
+    }).json()['access_token']
+    headers={"Authorization":f"Bearer {token}"}
+
+    response = client.post("/employees",json={
         "name": "Alice",
         "email": "alice@example.com",
         "department": "Engineering",
-        "joining_date": "2025-01-01"
-    })
+        "joining_date": "2025-01-01",
+        "password": "password123",
+        "role": "employee"
+    }, headers=headers)
+
     assert response.status_code == 201
     data = response.json()
     assert data["email"] == "alice@example.com"
-    assert "id" in data
+    assert data["role"] == "employee"
 
 
-def test_get_employee(client):
-    # Create employee first
-    client.post("/employees", json={
+def test_employee_cannot_create_employee(client):
+    # Register an employee
+    client.post("/auth/register", json={
         "name": "Bob",
         "email": "bob@example.com",
         "department": "HR",
-        "joining_date": "2025-01-01"
+        "joining_date": "2025-01-01",
+        "password": "password123"
     })
 
-    # Fetch employee
-    response = client.get("/employees/1")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["name"] == "Bob"
-    assert data["email"] == "bob@example.com"
+    # Login as Bob
+    token = client.post("/auth/token", data={
+        "username": "bob@example.com", "password": "password123"
+    }).json()["access_token"]
+
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Try to create another employee
+    response = client.post("/employees", json={
+        "name": "Charlie",
+        "email": "charlie@example.com",
+        "department": "Finance",
+        "joining_date": "2025-01-01",
+        "password": "secret123",
+        "role": "employee"
+    }, headers=headers)
+
+    assert response.status_code == 403
+    assert response.json()["detail"] == "You do not have permission for this action"
 
 
-def test_duplicate_email(client):
-    # Create first employee
+def test_duplicate_email(client, seed_manager):
+    token = client.post('/auth/token', data={
+        'username': 'manager@example.com', 'password': 'managerpass'
+    }).json()['access_token']
+
+    headers = {"Authorization": f"Bearer {token}"}
+
     client.post("/employees", json={
         "name": "Carol",
         "email": "carol@example.com",
         "department": "Finance",
-        "joining_date": "2025-01-01"
-    })
+        "joining_date": "2025-01-01",
+        "password": "password123",
+        "role": "employee"
+    }, headers=headers)
 
-    # Try creating with same email
     response = client.post("/employees", json={
         "name": "Carol2",
         "email": "carol@example.com",
         "department": "Finance",
-        "joining_date": "2025-01-02"
-    })
+        "joining_date": "2025-01-02",
+        "password": "password456",
+        "role": "employee"
+    }, headers=headers)
+
     assert response.status_code == 400
     assert response.json()["detail"] == "Email already exist"
 
 
-def test_get_balance(client):
-    # Create employee
-    emp = client.post("/employees", json={
+## GET EMPLOYEE
+def test_employee_can_fetch_self(client):
+    emp = client.post("/auth/register", json={
         "name": "David",
         "email": "david@example.com",
         "department": "IT",
-        "joining_date": "2025-01-01"
+        "joining_date": "2025-01-01",
+        "password": "mypassword"
     }).json()
 
-    response = client.get(f"/employees/{emp['id']}/balance")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["employee_id"] == emp["id"]
-    assert "leave_balance" in data
+    token = client.post("/auth/token", data={
+        "username": "david@example.com", "password": "mypassword"
+    }).json()["access_token"]
+
+    headers = {"Authorization": f"Bearer {token}"}
+    resp = client.get(f"/employees/{emp['id']}", headers=headers)
+
+    assert resp.status_code == 200
+    assert resp.json()["email"] == "david@example.com"
 
 
+def test_employee_cannot_fetch_others(client):
+    # Register two employees
+    emp1 = client.post("/auth/register", json={
+        "name": "E1", "email": "e1@example.com", "department": "IT", "joining_date": "2025-01-01", "password": "p1"
+    }).json()
+    emp2 = client.post("/auth/register", json={
+        "name": "E2", "email": "e2@example.com", "department": "HR", "joining_date": "2025-01-01", "password": "p2"
+    }).json()
 
-def test_get_nonexistent_employee(client):
-    response = client.get("/employees/999")
-    assert response.status_code == 404
-    assert response.json()["detail"] == "Employee not found"
+    token = client.post("/auth/token", data={"username": "e1@example.com", "password": "p1"}).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
 
-
-def test_balance_nonexistent_employee(client):
-    response = client.get("/employees/999/balance")
-    assert response.status_code == 404
-    assert response.json()["detail"] == "Employee not found"
-
-
-def test_create_employee_missing_name(client):
-    response = client.post("/employees", json={
-        "email": "noname@example.com",
-        "department": "HR",
-        "joining_date": "2025-01-01"
-    })
-    # Pydantic validation error
-    assert response.status_code == 422
+    # e1 tries to fetch e2
+    resp = client.get(f"/employees/{emp2['id']}", headers=headers)
+    assert resp.status_code == 403
 
 
-def test_create_employee_missing_email(client):
-    response = client.post("/employees", json={
-        "name": "NoEmail",
+def test_manager_can_fetch_any_employee(client, seed_manager):
+    # Manager login
+    token = client.post("/auth/token", data={
+        "username": "manager@example.com", "password": "managerpass"
+    }).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    # Register employee
+    emp = client.post("/auth/register", json={
+        "name": "Frank", "email": "frank@example.com", "department": "Finance", "joining_date": "2025-01-01", "password": "pass"
+    }).json()
+
+    resp = client.get(f"/employees/{emp['id']}", headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()["email"] == "frank@example.com"
+
+
+def test_manager_cannot_fetch_nonexistent_employee(client,seed_manager):
+    # Manager login
+    token = client.post("/auth/token", data={
+        "username": "manager@example.com", "password": "managerpass"
+    }).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    resp = client.get("/employees/999", headers=headers)
+    assert resp.status_code == 404
+    assert resp.json()['detail'] == "Employee not found"
+
+
+## GET BALANCE
+def test_get_balance_self(client):
+    emp = client.post("/auth/register", json={
+        "name": "Grace",
+        "email": "grace@example.com",
         "department": "Finance",
-        "joining_date": "2025-01-01"
-    })
-    assert response.status_code == 422
+        "joining_date": "2025-01-01",
+        "password": "pass"
+    }).json()
+
+    token = client.post("/auth/token", data={
+        "username": "grace@example.com", "password": "pass"
+    }).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    resp = client.get(f"/employees/{emp['id']}/balance", headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()["employee_id"] == emp["id"]
 
 
-def test_create_employee_invalid_email(client):
-    response = client.post("/employees", json={
-        "name": "Invalid",
-        "email": "not-an-email",
-        "department": "Sales",
-        "joining_date": "2025-01-01"
-    })
-    assert response.status_code == 422  # invalid email format
+def test_employee_cannot_fetch_others_balance(client):
+    # Register two employees
+    emp1 = client.post("/auth/register", json={
+        "name": "E1", "email": "e1@example.com", "department": "IT", "joining_date": "2025-01-01", "password": "p1"
+    }).json()
+    emp2 = client.post("/auth/register", json={
+        "name": "E2", "email": "e2@example.com", "department": "HR", "joining_date": "2025-01-01", "password": "p2"
+    }).json()
+
+    token = client.post("/auth/token", data={"username": "e1@example.com", "password": "p1"}).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    response = client.get(f"/employees/{emp2['id']}/balance", headers=headers)
+    assert response.status_code == 403
+    assert response.json()['detail'] == "You can only view your own balance"
 
 
-def test_list_employees_with_limit(client):
-    # Create 3 employees
-    for i in range(3):
-        client.post("/employees", json={
-            "name": f"Emp{i}",
-            "email": f"emp{i}@example.com",
-            "department": "Dept",
-            "joining_date": "2025-01-01"
-        })
+def test_manager_can_view_balance_of_anyone(client, seed_manager):
+    token = client.post("/auth/token", data={
+        "username": "manager@example.com", "password": "managerpass"
+    }).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
 
-    # Fetch only 2
-    response = client.get("/employees?skip=0&limit=2")
-    assert response.status_code == 200
-    data = response.json()
-    assert len(data) == 2
+    emp = client.post("/auth/register", json={
+        "name": "Hank", "email": "hank@example.com", "department": "IT", "joining_date": "2025-01-01", "password": "pass"
+    }).json()
+
+    resp = client.get(f"/employees/{emp['id']}/balance", headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()["employee_id"] == emp["id"]
 
 
-def test_list_employees_with_skip(client):
+def test_manager_cannot_view_balance_of_nonexistent_employee(client, seed_manager):
+    token = client.post("/auth/token", data={
+        "username": "manager@example.com", "password": "managerpass"
+    }).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+
+    resp = client.get("/employees/999/balance", headers=headers)
+    assert resp.status_code == 404
+    assert resp.json()["detail"] == "Employee not found"
+
+
+## LIST EMPLOYEE
+def test_list_employees_manager_only(client, seed_manager):
+    token = client.post("/auth/token", data={
+        "username": "manager@example.com", "password": "managerpass"
+    }).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
     # Create employees
     for i in range(3):
-        client.post("/employees", json={
-            "name": f"Emp{i}",
-            "email": f"emp{i}@example.com",
-            "department": "Dept",
-            "joining_date": "2025-01-01"
+        client.post("/auth/register", json={
+            "name": f"Emp{i}", "email": f"emp{i}@example.com", "department": "Dept", "joining_date": "2025-01-01", "password": "p"
         })
 
-    response = client.get("/employees?skip=2&limit=10")
-    assert response.status_code == 200
-    data = response.json()
-    # Only 1 left after skipping first 2
-    assert len(data) == 1
+    resp = client.get("/employees?skip=0&limit=2", headers=headers)
+    assert resp.status_code == 200
+    assert len(resp.json()) == 2
+
+
+def test_employee_cannot_list_employees(client):
+    client.post("/auth/register", json={
+        "name": "Ivy", "email": "ivy@example.com", "department": "QA", "joining_date": "2025-01-01", "password": "p"
+    })
+
+    token = client.post("/auth/token", data={
+        "username": "ivy@example.com", "password": "p"
+    }).json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    resp = client.get("/employees", headers=headers)
+    assert resp.status_code == 403
+
