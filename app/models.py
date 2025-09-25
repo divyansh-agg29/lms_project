@@ -1,8 +1,8 @@
-from sqlalchemy import Integer, String, Date, ForeignKey, CheckConstraint, Enum as SAEnum, Boolean
+from sqlalchemy import Integer, String, Date, ForeignKey, CheckConstraint, Enum as SAEnum, Boolean, DateTime, func
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from .database import Base
 import enum
-from datetime import date
+from datetime import date, datetime
 
 class LeaveStatus(str, enum.Enum):
     applied = "applied"
@@ -31,6 +31,8 @@ class Employee(Base):
     # Relationship: One employee can have many leave requests
     leaves: Mapped[list["LeaveRequest"]] = relationship("LeaveRequest", back_populates="employee", cascade="all, delete-orphan")
 
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship("RefreshToken", back_populates="employee", cascade="all, delete-orphan")
+
 
 class LeaveRequest(Base):
     __tablename__ = "leave_requests"
@@ -49,3 +51,16 @@ class LeaveRequest(Base):
     __table_args__ = (
         CheckConstraint("num_days > 0", name="ck_num_days_positive"),
         )
+
+
+class RefreshToken(Base):
+    __tablename__ = "refresh_tokens"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("employees.id", ondelete="CASCASE"), nullable=False, index=True)
+
+    token_hash: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.now())
+
+    user: Mapped["Employee"] = relationship("Employee", back_populates="refresh_tokens")
