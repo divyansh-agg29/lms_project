@@ -1,14 +1,45 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import select, and_
+import hashlib
+from datetime import datetime, timedelta
+
 from . import models
 from .config import settings
 from . import auth
+from .models import RefreshToken
+
 
 # ---------- Helper ----------
-
 def daterange_inclusive_days(start_date,end_date):
     return (end_date - start_date).days + 1
 
+
+def create_refresh_token(db: Session, user_id: int, token_hash: str, expires_at: datetime):
+    rt = RefreshToken(user_id=user_id, token_hash=token_hash, expires_at=expires_at)
+    db.add(rt)
+    db.commit()
+    db.refresh(rt)
+    return rt
+
+def get_refresh_token_by_hash(db: Session, token_hash: str):
+    stmt = select(RefreshToken).where(RefreshToken.token_hash == token_hash)
+    return db.execute(stmt).scalar_one_or_none()
+
+def revoke_refresh_token(db: Session, token_hash: str):
+    rt = db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).one_or_none()
+    if rt:
+        db.delete(rt)
+        db.commit()
+        return True
+    return False
+
+def delete_expired_refresh_tokens(db: Session):
+    now = datetime.utcnow()
+    stmt = select(RefreshToken).where(RefreshToken.expires_at < now)
+    results = db.execute(stmt).scalars().all()
+    for rt in results:
+        db.delete(rt)
+    db.commit()
 
 # ---------- EMPLOYEE ----------
 def create_employee(db:Session, *, name:str, email:str, department:str, joining_date, password:str, role: models.Role = models.Role.employee):

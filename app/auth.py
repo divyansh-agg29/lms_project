@@ -5,6 +5,7 @@ from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
+import secrets, hashlib
 
 from .config import settings
 from .database import get_db
@@ -56,3 +57,31 @@ def require_role(allowed_roles: List[Role]):
         
         return current_user
     return role_checker
+
+
+
+
+def hash_refresh_token(token: str) -> str:
+    """Hash a refresh token for safe DB storage."""
+    return hashlib.sha256(token.encode()).hexdigest()
+
+def create_and_store_refresh_token(db: Session, user_id: int) -> str:
+    """Generate, hash, and store a refresh token in DB; return the raw token."""
+    raw_token = secrets.token_urlsafe(32)
+    token_hash = hash_refresh_token(raw_token)
+    expires_at = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
+    crud.create_refresh_token(db, user_id=user_id, token_hash=token_hash, expires_at=expires_at)
+    return raw_token
+
+def verify_refresh_token(db: Session, raw_token: str):
+    """Check refresh token validity and return user if valid, else None."""
+    token_hash = hash_refresh_token(raw_token)
+    rt = crud.get_refresh_token_by_hash(db, token_hash)
+    if not rt or rt.expires_at < datetime.utcnow():
+        return None
+    return rt.user
+
+def revoke_refresh_token(db: Session, raw_token: str) -> bool:
+    """Revoke (delete) a refresh token from DB."""
+    token_hash = hash_refresh_token(raw_token)
+    return crud.revoke_refresh_token(db, token_hash)

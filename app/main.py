@@ -42,7 +42,44 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         data = {"sub":emp.email, "role":emp.role},
         expires_delta= access_token_expires
         )
-    return {"access_token": access_token, "token_type": "bearer"}
+    
+    refresh_token = auth.create_and_store_refresh_token(db, emp.id)
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+    }
+
+@app.post("/auth/refresh", response_model=schemas.Token)
+def refresh_token(payload: schemas.RefreshRequest, db: Session = Depends(get_db)):
+    user = auth.verify_refresh_token(db, payload.refresh_token)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+
+    # New access token
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = auth.create_access_token(
+        data={"sub": user.email, "role": user.role},
+        expires_delta=access_token_expires,
+    )
+
+    # Optionally: rotate refresh token here (invalidate old one, issue new one)
+    new_refresh_token = auth.create_and_store_refresh_token(db, user.id)
+
+    return {
+        "access_token": access_token,
+        "refresh_token": new_refresh_token,
+        "token_type": "bearer",
+    }
+
+@app.post("/auth/logout")
+def logout(payload: schemas.RefreshRequest, db: Session = Depends(get_db)):
+    revoked = auth.revoke_refresh_token(db, payload.refresh_token)
+    if not revoked:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")
+    return {"message": "Logged out successfully"}
+
 
 @app.post("/employees",response_model=schemas.EmployeeOut, status_code=status.HTTP_201_CREATED)
 def add_employee(payload: schemas.EmployeeRegister, db: Session = Depends(get_db), current_user = Depends(auth.require_role([Role.manager]))):

@@ -31,7 +31,7 @@ class Employee(Base):
     # Relationship: One employee can have many leave requests
     leaves: Mapped[list["LeaveRequest"]] = relationship("LeaveRequest", back_populates="employee", cascade="all, delete-orphan")
 
-    refresh_tokens: Mapped[list["RefreshToken"]] = relationship("RefreshToken", back_populates="employee", cascade="all, delete-orphan")
+    refresh_tokens: Mapped[list["RefreshToken"]] = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")
 
 
 class LeaveRequest(Base):
