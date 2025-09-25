@@ -56,7 +56,7 @@ class LeaveRequest(Base):
 class RefreshToken(Base):
     __tablename__ = "refresh_tokens"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("employees.id", ondelete="CASCASE"), nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("employees.id", ondelete="CASCADE"), nullable=False, index=True)
 
     token_hash: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
 

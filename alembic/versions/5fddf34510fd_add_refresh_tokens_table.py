@@ -1,8 +1,8 @@
 """add refresh_tokens table
 
-Revision ID: 903c0c55633b
+Revision ID: 5fddf34510fd
 Revises: d8268919d0e3
-Create Date: 2025-09-25 19:43:41.637233
+Create Date: 2025-09-25 19:47:28.338703
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '903c0c55633b'
+revision: str = '5fddf34510fd'
 down_revision: Union[str, Sequence[str], None] = 'd8268919d0e3'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -27,7 +27,7 @@ def upgrade() -> None:
     sa.Column('token_hash', sa.String(length=255), nullable=False),
     sa.Column('expires_at', sa.DateTime(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=False),
-    sa.ForeignKeyConstraint(['user_id'], ['employees.id'], ondelete='CASCASE'),
+    sa.ForeignKeyConstraint(['user_id'], ['employees.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_index(op.f('ix_refresh_tokens_id'), 'refresh_tokens', ['id'], unique=False)
