@@ -1,15 +1,37 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.responses import JSONResponse
+
 from sqlalchemy.orm import Session
+
 from typing import List
+from datetime import timedelta
+
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.errors import RateLimitExceeded
+
 from . import schemas, crud
 from .database import get_db
-from datetime import timedelta
-from fastapi.security import OAuth2PasswordRequestForm
 from . import auth
 from .config import settings
 from .models import Role
 
 app = FastAPI(title="Leave Management System")
+
+limiter = Limiter(key_func=get_remote_address)
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request, exc: RateLimitExceeded):
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "Too many login attempts. Please try again later."}
+    )
 
 
 @app.post("/auth/register",response_model=schemas.EmployeeOut, status_code=status.HTTP_201_CREATED)
@@ -28,8 +50,10 @@ def register(payload: schemas.EmployeeSelfRegister, db: Session = Depends(get_db
     )
     return emp
 
+
 @app.post("/auth/token", response_model=schemas.Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def login(request:Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     emp = crud.get_employee_by_email(db, form_data.username)
     if not emp:
         raise HTTPException(status_code=401, detail="Invalid Credentials")
