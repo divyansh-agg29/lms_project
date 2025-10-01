@@ -2,6 +2,7 @@ from pydantic import BaseModel, EmailStr, field_validator, ConfigDict
 from datetime import date
 from enum import Enum
 from app.models import Role, LeaveStatus
+from app.auth import validate_password_strength
 
 
 # ------------ AUTH ------------
@@ -12,6 +13,11 @@ class EmployeeSelfRegister(BaseModel):
     joining_date: date
     password: str
 
+    @field_validator("password")
+    def password_strength(cls, v):
+        validate_password_strength(v)  # raises ValueError on failure
+        return v
+
 
 # Request: when creating an employee
 class EmployeeRegister(BaseModel):
@@ -21,6 +27,11 @@ class EmployeeRegister(BaseModel):
     joining_date: date
     password: str
     role: Role = Role.employee
+
+    @field_validator("password")
+    def password_strength(cls, v):
+        validate_password_strength(v)  # raises ValueError on failure
+        return v
 
 class EmployeeLogin(BaseModel):
     email: EmailStr

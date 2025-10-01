@@ -4,8 +4,9 @@ from datetime import datetime, timedelta
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 import secrets, hashlib
+import string
 
 from .config import settings
 from .database import get_db
@@ -85,3 +86,53 @@ def revoke_refresh_token(db: Session, raw_token: str) -> bool:
     """Revoke (delete) a refresh token from DB."""
     token_hash = hash_refresh_token(raw_token)
     return crud.revoke_refresh_token(db, token_hash)
+
+
+def validate_password_strength(
+    password: str,
+    *,
+    min_length: int = 8,
+    max_length: int = 128,
+    require_upper: bool = True,
+    require_lower: bool = True,
+    require_digit: bool = True,
+    require_special: bool = True,
+) -> None:
+    """
+    Validate password according to policy. Raises ValueError with a clear message
+    if validation fails. Returns None on success.
+    """
+    if password is None:
+        raise ValueError("Password must be provided.")
+
+    errors: List[str] = []
+
+    plen = len(password)
+    if plen < min_length:
+        errors.append(f"Password must be at least {min_length} characters.")
+    if plen > max_length:
+        errors.append(f"Password must be at most {max_length} characters.")
+
+    # Leading/trailing whitespace is usually a source of confusion
+    if password != password.strip():
+        errors.append("Password must not have leading or trailing spaces.")
+
+    # Unicode-aware checks using str methods:
+    if require_lower and not any(c.islower() for c in password):
+        errors.append("Password must include at least one lowercase letter.")
+    if require_upper and not any(c.isupper() for c in password):
+        errors.append("Password must include at least one uppercase letter.")
+    if require_digit and not any(c.isdigit() for c in password):
+        errors.append("Password must include at least one digit.")
+
+    # Special character check: prefer string.punctuation (ASCII) but fallback to
+    # "non-alnum and non-space" to catch other punctuation.
+    if require_special:
+        if not any(c in string.punctuation for c in password) and not any(
+            (not c.isalnum() and not c.isspace()) for c in password
+        ):
+            errors.append("Password must include at least one special character (e.g. !@#$%).")
+
+    if errors:
+        # Combine into one message so client sees everything wrong at once
+        raise ValueError(" ".join(errors))
