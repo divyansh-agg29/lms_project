@@ -3,7 +3,7 @@ from datetime import date
 
 # --- Helpers ---
 
-def register_and_login_employee(client, name="Alice", email="alice@example.com", password="pass123"):
+def register_and_login_employee(client, name="Alice", email="alice@example.com", password="Password@123"):
     emp = client.post("/auth/register", json={
         "name": name,
         "email": email,
@@ -20,7 +20,7 @@ def register_and_login_employee(client, name="Alice", email="alice@example.com",
 def manager_headers(client, seed_manager):
     token = client.post("/auth/token", data={
         "username": "manager@example.com",
-        "password": "managerpass"
+        "password": "Managerpass@123"
     }).json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
 
@@ -41,8 +41,8 @@ def test_employee_can_apply_leave(client):
 
 
 def test_employee_cannot_apply_for_others(client):
-    emp1, headers1 = register_and_login_employee(client, "E1", "e1@example.com", "p1")
-    emp2, _ = register_and_login_employee(client, "E2", "e2@example.com", "p2")
+    emp1, headers1 = register_and_login_employee(client, "E1", "e1@example.com", "Password@123")
+    emp2, _ = register_and_login_employee(client, "E2", "e2@example.com", "Password@456")
 
     response = client.post("/leave/apply", json={
         "employee_id": emp2["id"],   # tries applying for someone else
@@ -84,8 +84,8 @@ def test_manager_cannot_list_leaves_of_nonexistent_employee(client, seed_manager
 
 
 def test_employee_cannot_view_others_leaves(client):
-    emp1, headers1 = register_and_login_employee(client, "E1", "e1@example.com", "p1")
-    emp2, headers2 = register_and_login_employee(client, "E2", "e2@example.com", "p2")
+    emp1, headers1 = register_and_login_employee(client, "E1", "e1@example.com", "Password@123")
+    emp2, headers2 = register_and_login_employee(client, "E2", "e2@example.com", "Password@456")
 
     # e1 tries to view e2’s leaves
     resp = client.get(f"/leave/employee/{emp2['id']}", headers=headers1)

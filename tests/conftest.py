@@ -8,6 +8,7 @@ from app.main import app as fastapi_app
 from app.database import Base, get_db
 from sqlalchemy.pool import StaticPool
 from app import crud,models
+from app.main import limiter
 
 # SQLALCHEMY_DATABASE_URL = "sqlite:///file::memory:?cache=shared"
 
@@ -41,6 +42,13 @@ def setup_db():
 def client():
     return TestClient(fastapi_app)
 
+@pytest.fixture(autouse=True)
+def clear_rate_limiter_state():
+    storage = getattr(limiter, "_storage", None)
+    if storage and hasattr(storage, "storage"):
+        ## print(">>> Clearing MemoryStorage dict before test")
+        storage.storage.clear()
+
 
 @pytest.fixture
 def seed_manager():
@@ -56,7 +64,7 @@ def seed_manager():
         email="manager@example.com",
         department="Admin",
         joining_date=date.today(),
-        password="managerpass",
+        password="Managerpass@123",
         role=models.Role.manager,
     )
 

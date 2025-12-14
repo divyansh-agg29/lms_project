@@ -3,7 +3,7 @@ def test_manager_can_create_employee(client, seed_manager):
     # get token from seeded manager
     token = client.post("/auth/token",data={
         "username": "manager@example.com",
-        "password": "managerpass"
+        "password": "Managerpass@123"
     }).json()['access_token']
     headers={"Authorization":f"Bearer {token}"}
 
@@ -12,7 +12,7 @@ def test_manager_can_create_employee(client, seed_manager):
         "email": "alice@example.com",
         "department": "Engineering",
         "joining_date": "2025-01-01",
-        "password": "password123",
+        "password": "Password@123",
         "role": "employee"
     }, headers=headers)
 
@@ -24,18 +24,22 @@ def test_manager_can_create_employee(client, seed_manager):
 
 def test_employee_cannot_create_employee(client):
     # Register an employee
-    client.post("/auth/register", json={
+    response = client.post("/auth/register", json={
         "name": "Bob",
         "email": "bob@example.com",
         "department": "HR",
         "joining_date": "2025-01-01",
-        "password": "password123"
+        "password": "Password@123"
     })
 
+    assert response.status_code == 201
+
     # Login as Bob
-    token = client.post("/auth/token", data={
-        "username": "bob@example.com", "password": "password123"
-    }).json()["access_token"]
+    response = client.post("/auth/token", data={
+        "username": "bob@example.com", "password": "Password@123"
+    })
+    assert response.status_code == 200
+    token = response.json()["access_token"]
 
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -45,7 +49,7 @@ def test_employee_cannot_create_employee(client):
         "email": "charlie@example.com",
         "department": "Finance",
         "joining_date": "2025-01-01",
-        "password": "secret123",
+        "password": "Password@123",
         "role": "employee"
     }, headers=headers)
 
@@ -55,7 +59,7 @@ def test_employee_cannot_create_employee(client):
 
 def test_duplicate_email(client, seed_manager):
     token = client.post('/auth/token', data={
-        'username': 'manager@example.com', 'password': 'managerpass'
+        'username': 'manager@example.com', 'password': 'Managerpass@123'
     }).json()['access_token']
 
     headers = {"Authorization": f"Bearer {token}"}
@@ -65,7 +69,7 @@ def test_duplicate_email(client, seed_manager):
         "email": "carol@example.com",
         "department": "Finance",
         "joining_date": "2025-01-01",
-        "password": "password123",
+        "password": "Password@123",
         "role": "employee"
     }, headers=headers)
 
@@ -74,7 +78,7 @@ def test_duplicate_email(client, seed_manager):
         "email": "carol@example.com",
         "department": "Finance",
         "joining_date": "2025-01-02",
-        "password": "password456",
+        "password": "Password@123",
         "role": "employee"
     }, headers=headers)
 
@@ -89,11 +93,11 @@ def test_employee_can_fetch_self(client):
         "email": "david@example.com",
         "department": "IT",
         "joining_date": "2025-01-01",
-        "password": "mypassword"
+        "password": "Password@123"
     }).json()
 
     token = client.post("/auth/token", data={
-        "username": "david@example.com", "password": "mypassword"
+        "username": "david@example.com", "password": "Password@123"
     }).json()["access_token"]
 
     headers = {"Authorization": f"Bearer {token}"}
@@ -106,13 +110,13 @@ def test_employee_can_fetch_self(client):
 def test_employee_cannot_fetch_others(client):
     # Register two employees
     emp1 = client.post("/auth/register", json={
-        "name": "E1", "email": "e1@example.com", "department": "IT", "joining_date": "2025-01-01", "password": "p1"
+        "name": "E1", "email": "e1@example.com", "department": "IT", "joining_date": "2025-01-01", "password": "Password@123"
     }).json()
     emp2 = client.post("/auth/register", json={
-        "name": "E2", "email": "e2@example.com", "department": "HR", "joining_date": "2025-01-01", "password": "p2"
+        "name": "E2", "email": "e2@example.com", "department": "HR", "joining_date": "2025-01-01", "password": "Password@456"
     }).json()
 
-    token = client.post("/auth/token", data={"username": "e1@example.com", "password": "p1"}).json()["access_token"]
+    token = client.post("/auth/token", data={"username": "e1@example.com", "password": "Password@123"}).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
     # e1 tries to fetch e2
@@ -123,13 +127,13 @@ def test_employee_cannot_fetch_others(client):
 def test_manager_can_fetch_any_employee(client, seed_manager):
     # Manager login
     token = client.post("/auth/token", data={
-        "username": "manager@example.com", "password": "managerpass"
+        "username": "manager@example.com", "password": "Managerpass@123"
     }).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
     # Register employee
     emp = client.post("/auth/register", json={
-        "name": "Frank", "email": "frank@example.com", "department": "Finance", "joining_date": "2025-01-01", "password": "pass"
+        "name": "Frank", "email": "frank@example.com", "department": "Finance", "joining_date": "2025-01-01", "password": "Password@123"
     }).json()
 
     resp = client.get(f"/employees/{emp['id']}", headers=headers)
@@ -140,7 +144,7 @@ def test_manager_can_fetch_any_employee(client, seed_manager):
 def test_manager_cannot_fetch_nonexistent_employee(client,seed_manager):
     # Manager login
     token = client.post("/auth/token", data={
-        "username": "manager@example.com", "password": "managerpass"
+        "username": "manager@example.com", "password": "Managerpass@123"
     }).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -156,11 +160,11 @@ def test_get_balance_self(client):
         "email": "grace@example.com",
         "department": "Finance",
         "joining_date": "2025-01-01",
-        "password": "pass"
+        "password": "Password@123"
     }).json()
 
     token = client.post("/auth/token", data={
-        "username": "grace@example.com", "password": "pass"
+        "username": "grace@example.com", "password": "Password@123"
     }).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -172,13 +176,13 @@ def test_get_balance_self(client):
 def test_employee_cannot_fetch_others_balance(client):
     # Register two employees
     emp1 = client.post("/auth/register", json={
-        "name": "E1", "email": "e1@example.com", "department": "IT", "joining_date": "2025-01-01", "password": "p1"
+        "name": "E1", "email": "e1@example.com", "department": "IT", "joining_date": "2025-01-01", "password": "Password@123"
     }).json()
     emp2 = client.post("/auth/register", json={
-        "name": "E2", "email": "e2@example.com", "department": "HR", "joining_date": "2025-01-01", "password": "p2"
+        "name": "E2", "email": "e2@example.com", "department": "HR", "joining_date": "2025-01-01", "password": "Password@456"
     }).json()
 
-    token = client.post("/auth/token", data={"username": "e1@example.com", "password": "p1"}).json()["access_token"]
+    token = client.post("/auth/token", data={"username": "e1@example.com", "password": "Password@123"}).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
     response = client.get(f"/employees/{emp2['id']}/balance", headers=headers)
@@ -188,12 +192,12 @@ def test_employee_cannot_fetch_others_balance(client):
 
 def test_manager_can_view_balance_of_anyone(client, seed_manager):
     token = client.post("/auth/token", data={
-        "username": "manager@example.com", "password": "managerpass"
+        "username": "manager@example.com", "password": "Managerpass@123"
     }).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
     emp = client.post("/auth/register", json={
-        "name": "Hank", "email": "hank@example.com", "department": "IT", "joining_date": "2025-01-01", "password": "pass"
+        "name": "Hank", "email": "hank@example.com", "department": "IT", "joining_date": "2025-01-01", "password": "Password@123"
     }).json()
 
     resp = client.get(f"/employees/{emp['id']}/balance", headers=headers)
@@ -203,7 +207,7 @@ def test_manager_can_view_balance_of_anyone(client, seed_manager):
 
 def test_manager_cannot_view_balance_of_nonexistent_employee(client, seed_manager):
     token = client.post("/auth/token", data={
-        "username": "manager@example.com", "password": "managerpass"
+        "username": "manager@example.com", "password": "Managerpass@123"
     }).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
@@ -216,14 +220,14 @@ def test_manager_cannot_view_balance_of_nonexistent_employee(client, seed_manage
 ## LIST EMPLOYEE
 def test_list_employees_manager_only(client, seed_manager):
     token = client.post("/auth/token", data={
-        "username": "manager@example.com", "password": "managerpass"
+        "username": "manager@example.com", "password": "Managerpass@123"
     }).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 
     # Create employees
     for i in range(3):
         client.post("/auth/register", json={
-            "name": f"Emp{i}", "email": f"emp{i}@example.com", "department": "Dept", "joining_date": "2025-01-01", "password": "p"
+            "name": f"Emp{i}", "email": f"emp{i}@example.com", "department": "Dept", "joining_date": "2025-01-01", "password": "Password@123"
         })
 
     resp = client.get("/employees?skip=0&limit=2", headers=headers)
@@ -233,11 +237,11 @@ def test_list_employees_manager_only(client, seed_manager):
 
 def test_employee_cannot_list_employees(client):
     client.post("/auth/register", json={
-        "name": "Ivy", "email": "ivy@example.com", "department": "QA", "joining_date": "2025-01-01", "password": "p"
+        "name": "Ivy", "email": "ivy@example.com", "department": "QA", "joining_date": "2025-01-01", "password": "Password@123"
     })
 
     token = client.post("/auth/token", data={
-        "username": "ivy@example.com", "password": "p"
+        "username": "ivy@example.com", "password": "Password@123"
     }).json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
 

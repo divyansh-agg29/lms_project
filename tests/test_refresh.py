@@ -1,7 +1,7 @@
 from datetime import date
 
 # --- Helpers ---
-def register_and_login_employee(client, email="alice@example.com", password="secret123"):
+def register_and_login_employee(client, email="alice@example.com", password="Password@123"):
     """Register an employee and login, returning (employee, tokens)."""
     emp = client.post("/auth/register", json={
         "name": "Alice",

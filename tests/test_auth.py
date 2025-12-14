@@ -7,7 +7,7 @@ def test_register_employee(client):
         "email": "alice@example.com",
         "department": "Engineering",
         "joining_date": "2025-01-01",
-        "password": "password123"
+        "password": "Password@123"
     })
     assert response.status_code == 201
     data = response.json()
@@ -22,7 +22,7 @@ def test_register_duplicate_email(client):
         "email": "bob@example.com",
         "department": "HR",
         "joining_date": "2025-01-01",
-        "password": "password123"
+        "password": "Password@123"
     })
 
     response = client.post("/auth/register", json={
@@ -30,7 +30,7 @@ def test_register_duplicate_email(client):
         "email": "bob@example.com",
         "department": "HR",
         "joining_date": "2025-01-02",
-        "password": "password456"
+        "password": "Password@456"
     })
     assert response.status_code == 400
     assert response.json()['detail'] == "Email already exist"
@@ -42,7 +42,7 @@ def test_register_with_role_field_is_ignored(client):
         "email": "charlie@example.com",
         "department": "Finance",
         "joining_date": "2025-01-01",
-        "password": "pass123",
+        "password": "Password@123",
         "role": "manager"   # trying to put role as manager
     })
     assert response.status_code == 201
@@ -57,12 +57,12 @@ def test_login_success(client):
         "email": "diana@example.com",
         "department": "Sales",
         "joining_date": "2025-01-01",
-        "password": "mypassword"
+        "password": "Password@123"
     })
 
     response = client.post("/auth/token", data={
         "username": "diana@example.com",
-        "password": "mypassword"
+        "password": "Password@123"
     })
 
     assert response.status_code == 200
@@ -81,7 +81,7 @@ def test_login_wrong_password(client):
         "email": "eve@example.com",
         "department": "Support",
         "joining_date": "2025-01-01",
-        "password": "correctpass"
+        "password": "Password@123"
     })
 
     response = client.post("/auth/token", data={
@@ -111,7 +111,7 @@ def test_token_expiry(client, monkeypatch):
         "email": "tokentest@example.com",
         "department": "QA",
         "joining_date": "2025-01-01",
-        "password": "secret123"
+        "password": "Password@123"
     })
 
     assert response.status_code == 201
@@ -120,7 +120,7 @@ def test_token_expiry(client, monkeypatch):
     # Login to get token
     response = client.post("/auth/token", data={
         "username": "tokentest@example.com",
-        "password": "secret123"
+        "password": "Password@123"
     })
     assert response.status_code == 200
     token = response.json()["access_token"]
@@ -131,3 +131,31 @@ def test_token_expiry(client, monkeypatch):
 
     assert resp.status_code == 401
     assert resp.json()["detail"] == "Invalid Token"
+
+
+def test_rate_limit(client):
+    # Register an employee
+    response = client.post("/auth/register", json={
+        "name": "Token Test",
+        "email": "tokentest@example.com",
+        "department": "QA",
+        "joining_date": "2025-01-01",
+        "password": "Password@123"
+    })
+
+    assert response.status_code == 201
+
+    for _ in range(5):
+        response = client.post("/auth/token", data={
+            "username": "tokentest@example.com",
+            "password": "Password@123"
+        })
+        assert response.status_code == 200
+    
+    # 6th login should fail
+    response = client.post("/auth/token", data={
+        "username": "tokentest@example.com",
+        "password": "Password@123"
+    })
+    assert response.status_code == 429
+    assert response.json()["detail"] ==  "Too many login attempts. Please try again later."
